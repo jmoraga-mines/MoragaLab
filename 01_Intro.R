@@ -41,7 +41,7 @@ PSInSAR_df_n11$Geothermal <- ifelse(PSInSAR_df_n11$Velocity<(v_mean-geo_factor*v
                                            0, NA)
                                     )
 Geothermal_df <- subset(PSInSAR_df_n11, select=-Velocity)
-new_ai_data_df <- na.omit(Geothermal_df)
+new_ai_data_dfxy <- na.omit(Geothermal_df)
 head(new_ai_data_df)
 
 
