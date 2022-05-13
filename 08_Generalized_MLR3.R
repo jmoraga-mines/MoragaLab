@@ -9,7 +9,7 @@ pacman::p_load(caret, sf, terra, tidyverse, mlr3verse, pROC)
 # "d:/ThesisLayers/AI_Stacks/FullStacks/brady_full_stack"
 # "d:/ThesisLayers/AI_Stacks/MineralStacks/desert_minerals_stack"
 # "d:/ThesisLayers/AI_Stacks/MineralStacks/brady_minerals_stack"
-m <- raster::stack("d:/ThesisLayers/AI_Stacks/MineralStacks/brady_minerals_stack")
+m <- raster::stack("data/brady_ai_stack")
 
 
 
