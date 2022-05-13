@@ -3,10 +3,10 @@ if (!require("pacman")){
   require("pacman")
 }
 
-pacman::p_load(caret, sf, terra, tidyverse, mlr3verse, pROC)
+pacman::p_load(caret, sf, terra, tidyverse, mlr3verse, pROC, nnet)
 
+# Contains original PSInSAR (deformation) data
 PSInSAR_df <- readRDS("data/PSInSAR_df.rds")
-
 PSInSAR_sf <- st_as_sf(PSInSAR_df, coords = c("Longitude", "Latitude"), 
                        agr = "constant", crs=4326)
 PSInSAR_sf_n11 <- st_transform(PSInSAR_sf, crs="epsg:32611")
@@ -17,7 +17,7 @@ v_sd <- sd(PSInSAR_df$Velocity)
 geo_factor <- 1   # We can change this to get more strict on what is or not geothermal
 
 m <- raster::stack("data/brady_ai_stack")
-m <- m[[c("Minerals", "Temperature", "Faults", "Slope", 
+m <- m[[c("Temperature", "Faults", "Slope", 
           "Chalcedony", "Kaolinite", "Gypsum", "Hematite")]]
 
 # Obtain a sf object with the raster data at relevant points
@@ -60,9 +60,9 @@ task_st_classif <- mlr3spatiotempcv::TaskClassifST$new(new_ai_data_xydf,
                                                        id = "geot_stcv",
                                                        extra_args = list(coords_as_features = FALSE,
                                                                          coordinate_names=c("x", "y"))
-)
+                                                       )
 # Creates spatiotemporal resampling. 5 folds, repeated 2 times
-resampling_spcv <- mlr3::rsmp('repeated_spcv_coords', folds = 5, repeats = 2)
+resampling_spcv <- mlr3::rsmp('repeated_spcv_coords', folds = 10, repeats = 4)
 
 # The answer to the ultimate question of life, the universe, and everything
 set.seed(42)
@@ -75,10 +75,16 @@ print(nnet_learner)
 set.seed(42)
 nn_sp <- mlr3::resample(task = task_st_classif,
                         learner = nnet_learner,
-                        # store_models = TRUE,
+                        store_models = TRUE,
                         resampling = resampling_spcv)
 
 nn_sp$score(measures = c(msr("classif.acc"), msr("classif.bacc"), msr("classif.fbeta")))
 nn_sp$aggregate(measures = c(msr("classif.acc"), msr("classif.bacc"), msr("classif.fbeta")))
 
+####################
+nnet_14 <- nn_sp$learners[[14]]$model
+m <- raster::stack("data/brady_ai_stack")
+prediction_raster <- raster::predict(m, nnet_14)
+raster::spplot(prediction_raster)
+raster::spplot(prediction_raster<0.5)
 
