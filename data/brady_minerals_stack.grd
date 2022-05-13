@@ -1,0 +1,25 @@
+[general]
+creator=R package 'raster'
+created=2022-05-08 18:57:04
+[georeference]
+nrows=1409
+ncols=874
+xmin=326439
+ymin=4405092
+xmax=329061
+ymax=4409319
+projection=+proj=utm +zone=11 +datum=WGS84 +units=m +no_defs
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=8
+bandorder=BSQ
+minvalue=0:0:0:0:0:0:0:0
+maxvalue=1:1:1:1:1:1:1:1
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=Geothermal:Temperature:Faults:Slope:Chalcedony:Kaolinite:Gypsum:Hematite
