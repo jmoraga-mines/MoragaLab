@@ -41,7 +41,44 @@ PSInSAR_df_n11$Geothermal <- ifelse(PSInSAR_df_n11$Velocity<(v_mean-geo_factor*v
                                            0, NA)
                                     )
 Geothermal_df <- subset(PSInSAR_df_n11, select=-Velocity)
-new_ai_data_dfxy <- na.omit(Geothermal_df)
+
+rm(df, PSInSAR_sf, PSInSAR_sf_n11, PSInSAR_df, PSInSAR_df_n11, m, m_sf)
+gc() # Garbage collector, frees up memory
+
+########       Spatiotemporal sampling from here and on...
+new_ai_data_xydf <- na.omit(Geothermal_df)
 head(new_ai_data_df)
+
+# Convert to factor
+new_ai_data_xydf$Geothermal <- factor(ifelse(new_ai_data_xydf$Geothermal>=0.5, "Yes", "No"),
+                                      levels = c("No", "Yes"))
+
+# Creates a new taks to classify using spatio-temporal cross-validation
+task_st_classif <- mlr3spatiotempcv::TaskClassifST$new(new_ai_data_xydf, 
+                                                       target = "Geothermal",
+                                                       positive = "Yes",
+                                                       id = "geot_stcv",
+                                                       extra_args = list(coords_as_features = FALSE,
+                                                                         coordinate_names=c("x", "y"))
+)
+# Creates spatiotemporal resampling. 5 folds, repeated 2 times
+resampling_spcv <- mlr3::rsmp('repeated_spcv_coords', folds = 5, repeats = 2)
+
+# The answer to the ultimate question of life, the universe, and everything
+set.seed(42)
+
+# Neural network - 7 hidden neuron
+nnet_learner <- mlr3::lrn("classif.nnet", size = 7, maxit = 1000) # Neural network, with hidden neurons
+
+
+print(nnet_learner)
+set.seed(42)
+nn_sp <- mlr3::resample(task = task_st_classif,
+                        learner = nnet_learner,
+                        # store_models = TRUE,
+                        resampling = resampling_spcv)
+
+nn_sp$score(measures = c(msr("classif.acc"), msr("classif.bacc"), msr("classif.fbeta")))
+nn_sp$aggregate(measures = c(msr("classif.acc"), msr("classif.bacc"), msr("classif.fbeta")))
 
 
