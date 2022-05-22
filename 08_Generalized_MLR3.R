@@ -9,7 +9,7 @@ pacman::p_load(caret, sf, terra, tidyverse, mlr3verse, pROC)
 # "d:/ThesisLayers/AI_Stacks/FullStacks/brady_full_stack"
 # "d:/ThesisLayers/AI_Stacks/MineralStacks/desert_minerals_stack"
 # "d:/ThesisLayers/AI_Stacks/MineralStacks/brady_minerals_stack"
-m <- raster::stack("data/brady_ai_stack")
+m <- raster::stack("data/brady_ai_stack") # 8 capas, la primera es Geo / Non-Geo
 
 
 
@@ -19,13 +19,15 @@ logistic_regression <- mlr3::lrn("classif.log_reg", id = "binary") # Logistic re
 
 # Non-spatiotemporal classification
 new_ai_data_df <-  as.data.frame(m, xy=FALSE)
+new_ai_data_df$Geothermal <- factor(new_ai_data_df$Geothermal, levels = c(0, 1), labels = c("No", "Yes"))
+head(new_ai_data_df)
 task_classif <- mlr3::as_task_classif(new_ai_data_df,
                                       target = "Geothermal",
                                       positive = "Yes",
-                                      id = "geot_cv")
+                                      id = "geot_classification")
 # Creates repeated cv resampling. 5 folds, repeated 2 times
-resampling_cv <- mlr3::rsmp('repeated_cv', folds = 5, repeats = 2)
-set.seed(42)
+resampling_cv <- mlr3::rsmp('repeated_cv', folds = 5, repeats = 1)
+set.seed(42) # 
 rr_lrcv <- mlr3::resample(task = task_classif,
                           learner = logistic_regression,
                           store_models = TRUE,
@@ -38,16 +40,30 @@ rr_lrcv$aggregate(measures = c(msr("classif.acc"), msr("classif.bacc"), msr("cla
 
 rm(rr_lrcv)
 
-########       Spatioemporal sampling from here and on...
+######## Spatio-temporal sampling from here and on...
 
 
+
+m <- raster::stack("data/brady_ai_stack") # 8 capas, la primera es Geo / Non-Geo
+raster::spplot(m)
 
 new_ai_data_xydf <- as.data.frame(m, xy=TRUE) # We will use coordinates for spatial sampling
 new_ai_data_xydf <- na.omit(new_ai_data_xydf)
+
+head(new_ai_data_xydf)
+
+new_ai_data_xydf <- new_ai_data_xydf[c("Geothermal", "Temperature", 
+                                       "Faults", "Slope", 
+                                       "Chalcedony", "Kaolinite",
+                                       "Gypsum", "Hematite", "x", "y")]
 # new_ai_data_xydf$Geothermal <- as.factor(new_ai_data_xydf$Geothermal)
 
-new_ai_data_xydf$Geothermal <- factor(ifelse(new_ai_data_xydf$Geothermal>=0.5, "Yes", "No"),
-                                    levels = c("No", "Yes"))
+# new_ai_data_xydf$Geothermal <- factor(ifelse(new_ai_data_xydf$Geothermal>=0.5, "Yes", "No"),
+#                                     levels = c("No", "Yes"))
+new_ai_data_xydf$Geothermal <- factor(new_ai_data_xydf$Geothermal, levels = c(0, 1), labels = c("No", "Yes"))
+
+head(new_ai_data_xydf)
+
 
 # Creates a new taks to classify using spatio-temporal cross-validation
 task_st_classif <- mlr3spatiotempcv::TaskClassifST$new(new_ai_data_xydf, 
@@ -58,7 +74,10 @@ task_st_classif <- mlr3spatiotempcv::TaskClassifST$new(new_ai_data_xydf,
                                                                          coordinate_names=c("x", "y"))
                                                        )
 # Creates spatiotemporal resampling. 5 folds, repeated 2 times
-resampling_spcv <- mlr3::rsmp('repeated_spcv_coords', folds = 5, repeats = 2)
+resampling_spcv <- mlr3::rsmp('repeated_spcv_coords', folds = 5, repeats = 1)
+
+# Creates a logistic regression learner
+logistic_regression <- mlr3::lrn("classif.log_reg", id = "binary") # Logistic regression
 
 set.seed(42)
 rr_lrspcv <- mlr3::resample(task = task_st_classif,
